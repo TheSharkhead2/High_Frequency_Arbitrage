@@ -1,7 +1,8 @@
 using Random
 using Statistics
+using ProgressMeter
 
-function prune_hist(location)
+function prune_hist(location, time)
     """
     Looks at all history and determines what a specific player can see
     based on their location. 
@@ -10,7 +11,6 @@ function prune_hist(location)
 
     #declare global history variables
     global global_history
-    global time
 
     history = ((true, []), (true, []), (true, []), (false, []), (false, []), (false, [])) #blank tuple for history. 6 entries (lists), one for each markey
 
@@ -27,7 +27,7 @@ function prune_hist(location)
     history
 end
 
-function playerMove(location)
+function playerMove(location, time; strat="rand", constPick=1, randRatio=0.5, stockDependentWeights = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5])
     """
     Function to determine strategy of either player. 
 
@@ -40,7 +40,51 @@ function playerMove(location)
 
     """
 
-    stockPick = rand(1:6)
+    if strat == "rand"
+        stockPick = rand(1:2)
+    elseif strat == "const"
+        stockPick = constPick
+    elseif strat == "randRatio"
+        if rand() > randRatio 
+            stockPick = 1
+        else
+            stockPick = 2
+        end
+    elseif strat == "stockDependent" 
+        availableHist = prune_hist(location, time) #grab history (this is slow so only run it here)
+        
+        latestSale = 0 #empty variable to assign later. will be last stock other sold 
+        latestSaleTime = 0 #empty time to compare sales
+
+        stockCounter = 1 #count which stock loop is on
+
+        #find the latest sale from other person
+        for stock in availableHist 
+            if length(stock[2]) != 0 #if the history isn't length zero 
+                if stock[2][1][1] != location && stock[2][1][2] > latestSaleTime
+                    latestSaleTime = stock[2][1][2]
+                    latestSale = stockCounter
+                end
+            end
+        end
+
+        if latestSale == 0 # if no sales present, just sell random market
+            stockPick = rand(1:2) 
+        else 
+            if rand() > stockDependentWeights[latestSale] #if stock was found use specified weights
+                stockPick = 1
+            else 
+                stockPick = 2
+            end
+        end
+
+    end
+
+    if stockPick == 1
+        return false
+    else
+        return true
+    end
 
 end
 
@@ -57,12 +101,8 @@ M_p1 = 0
 m_p2 = 0 
 M_p2 = 0
 
-endTime = 800 #number of ticks in one "round"
-nSimulation = 100 #number of simulations/rounds that will run
-
-running = true #to keep while loop running 
-
-time = 0 #keep track of current time to affect visability 
+endTime = 2000 #number of ticks in one "round"
+nSimulation = 1 #number of simulations/rounds that will run
 
 #lists to save history of m and M for multiple rounds 
 m_p1_hist = []
@@ -71,8 +111,6 @@ m_p2_hist = []
 M_p2_hist = []
 
 for nSim in 1:nSimulation #run specified number of simulations
-    global time 
-    global running
     global endTime
     global global_history
     global global_queue
@@ -92,13 +130,23 @@ for nSim in 1:nSimulation #run specified number of simulations
     M_p1 = 0
     m_p2 = 0 
     M_p2 = 0
-    running = true
-    time = 0 
 
-    while running == true
+    @showprogress 1 "Running round... " for time in 0:endTime
 
-        player1Stock = playerMove(false) #run stock pick logic for player1 
-        player2Stock = playerMove(true) #run stock pick logic for player2 
+        player1Market = playerMove(false, time; strat="randRatio", randRatio=0.03) #run stock pick logic for player1 
+        player2Market = playerMove(true, time; strat="randRatio", randRatio=0.97) #run stock pick logic for player2 
+
+        if player1Market #if market 2 
+            player1Stock = rand(1:3)
+        else 
+            player1Stock = rand(4:6) #otherwise market 1
+        end
+
+        if player2Market #if market 2 
+            player2Stock = rand(1:3)
+        else 
+            player2Stock = rand(4:6) #otherwise market 1
+        end
 
         if global_queue[player1Stock][1] == false #if p1 stock pick in same location as p1, delay is 1 tick 
             p1Delay = 1 
@@ -162,12 +210,6 @@ for nSim in 1:nSimulation #run specified number of simulations
 
         # println("Current time is $time. Player1 has $m_p1 m - $M_p1 M and player2 has $m_p2 m - $M_p2 M. History:")
         # println(global_history)
-
-        time += 1 #increment time
-
-        if endTime <= time #stop loop if after endtime 
-            running = false
-        end
     end
 
     #save all payoffs per round
@@ -175,6 +217,8 @@ for nSim in 1:nSimulation #run specified number of simulations
     push!(M_p1_hist, M_p1)
     push!(m_p2_hist, m_p2)
     push!(M_p2_hist, M_p2)
+
+    println("game $nSim complete")
 
 end
 
