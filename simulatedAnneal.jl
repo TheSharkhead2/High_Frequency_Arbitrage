@@ -2,6 +2,10 @@
 Second file to try and implement simulated annealing to find a good strategy
 for game. 
 
+Used this tutorial for help: https://towardsdatascience.com/optimization-techniques-simulated-annealing-d6a4785a1de7
+(however, I have original code due to the fact that the above is written in python
+I just needed a template for steps)
+
 """
 
 using Random
@@ -263,6 +267,7 @@ function sim_anneal(maxTime, iTemp, fTemp, m, M, stepStdev, beta)
 
     currentScore = run_sim_vals(m, M, maxTime, P_A, P_B) # get score of P_A and P_B
     
+    prog = ProgressThresh(fTemp, "Temperature:") #Progressbar
     while currentTemp > fTemp #loop until temperature is below the final temperature
         neighbor = get_neighbor(stepStdev, P_A, P_B) #get random neighbor 
 
@@ -275,7 +280,7 @@ function sim_anneal(maxTime, iTemp, fTemp, m, M, stepStdev, beta)
 
             currentScore = run_sim_vals(m, M, maxTime, P_A, P_B) # update score of P_A and P_B
 
-            println("taking better P_A = $P_A and P_B = $P_B with a score $currentScore")
+            # println("taking better P_A = $P_A and P_B = $P_B with a score $currentScore")
 
         else
             if rand() < exp(costDiff / currentTemp) #have a chance of accepting the bad solution
@@ -283,15 +288,17 @@ function sim_anneal(maxTime, iTemp, fTemp, m, M, stepStdev, beta)
 
                 currentScore = run_sim_vals(m, M, maxTime, P_A, P_B) # update score of P_A and P_B
 
-                println("taking worse P_A = $P_A and P_B = $P_B with a score $currentScore")
+                # println("taking worse P_A = $P_A and P_B = $P_B with a score $currentScore")
 
             end
         end
 
         #decrement the temperature 
         currentTemp = currentTemp/(1+beta*currentTemp) #smaller the beta, the slower the decreases
-    
-        println("Temperature is now $currentTemp")
+        
+        ProgressMeter.update!(prog, currentTemp) #update bar
+
+        # println("Temperature is now $currentTemp")
 
     end
 
@@ -299,5 +306,15 @@ function sim_anneal(maxTime, iTemp, fTemp, m, M, stepStdev, beta)
 
 end
 
+mInput = parse(Int, ARGS[1])
+MInput = parse(Int, ARGS[2])
 
-sim_anneal(400, 1000, 0.1, 3, 4, 0.01, 0.0001 )
+println("Running with m = $mInput and M = $MInput")
+
+P_Aresult, P_Bresult = sim_anneal(400, 1000, 0.1, mInput, MInput, 0.01, 0.0005 ) #get command line arguments for m and M
+
+println("Got a P_A = $P_Aresult and P_B = $P_Bresult")
+
+longerScore = run_sim_vals(mInput, MInput, 4000, P_Aresult, P_Bresult) #get score for 4000 ticks
+
+println("This scores $longerScore for 4000 ticks")
