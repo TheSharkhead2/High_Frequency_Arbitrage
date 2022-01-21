@@ -295,7 +295,7 @@ function sim_anneal(maxTime, iTemp, fTemp, m, M, stepStdev, beta)
 
         #decrement the temperature 
         currentTemp = currentTemp/(1+beta*currentTemp) #smaller the beta, the slower the decreases
-        
+
         ProgressMeter.update!(prog, currentTemp) #update bar
 
         # println("Temperature is now $currentTemp")
@@ -311,7 +311,7 @@ MInput = parse(Int, ARGS[2])
 
 println("Running with m = $mInput and M = $MInput")
 
-P_Aresult, P_Bresult = sim_anneal(400, 1000, 0.1, mInput, MInput, 0.01, 0.0005 ) #get command line arguments for m and M
+P_Aresult, P_Bresult = sim_anneal(400, 10000, 0.5, mInput, MInput, 0.05, 0.0001 ) #get command line arguments for m and M
 
 println("Got a P_A = $P_Aresult and P_B = $P_Bresult")
 
